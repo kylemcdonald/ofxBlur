@@ -4,7 +4,7 @@ void ofApp::setup() {
 	ofSetLogLevel(OF_LOG_VERBOSE);
 	cam.initGrabber(640, 480);
 	
-	blur.setup(cam.getWidth(), cam.getHeight(), 4);
+	blur.setup(cam.getWidth(), cam.getHeight(), 4, .2, 4);
 }
 
 void ofApp::update() {	

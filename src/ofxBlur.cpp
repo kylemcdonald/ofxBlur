@@ -92,7 +92,9 @@ string generateCombineSource(int passes, float downsample) {
 }
 
 ofxBlur::ofxBlur()
-:scale(1) {
+:scale(1)
+,rotation(0)
+,brightness(1) {
 }
 
 void ofxBlur::setup(int width, int height, int radius, float shape, int passes, float downsample) {
@@ -195,12 +197,12 @@ void ofxBlur::end() {
 		mesh.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
 		mesh.addTexCoord(ofVec2f(0, 0));
 		mesh.addVertex(ofVec2f(0, 0));
-		mesh.addTexCoord(ofVec2f(w, 0));
-		mesh.addVertex(ofVec2f(w, 0));
-		mesh.addTexCoord(ofVec2f(w, h));
-		mesh.addVertex(ofVec2f(w, h));
 		mesh.addTexCoord(ofVec2f(0, h));
 		mesh.addVertex(ofVec2f(0, h));
+		mesh.addTexCoord(ofVec2f(w, h));
+		mesh.addVertex(ofVec2f(w, h));
+		mesh.addTexCoord(ofVec2f(w, 0));
+		mesh.addVertex(ofVec2f(w, 0));
 		
 		base.begin();
 		combineShader.begin();
@@ -209,7 +211,7 @@ void ofxBlur::end() {
 			combineShader.setUniformTexture(name.c_str(), ping[i]->getTextureReference(), i + 1);
 		}
 		combineShader.setUniform1f("brightness", brightness);
-		mesh.drawFaces();
+		mesh.draw();
 		combineShader.end();
 		base.end();
 	} else {
