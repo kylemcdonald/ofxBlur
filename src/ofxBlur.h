@@ -1,17 +1,3 @@
-/*
-	only call setup() once. you must specify the width and height. radius
-	describes the radius of the blur kernel. the larger the radius, the slower the
-	blur. if you want a larger apparent radius at the same speed, use setScale(x)
-	where x>1. shape describes the circularity/squareness of the kernel. for a
-	more circular kernel, use smaller values like .2 and for a more square kernel
-	use larger values like 10. for more square kernels, rotating the kernel has
-	an obvious visual effect. use setRotation() to set the rotation of the kernel
-	in radians. finally, using the passes and downsample arguments you can run
-	the blur filter multiple times at different scales and ofxBlur will combine
-	the results for you. this can be used to create a more bloom-like or fog-like
-	effect.
-*/
-
 #pragma once
 
 #include "ofMain.h"
