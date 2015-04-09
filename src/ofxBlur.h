@@ -6,8 +6,10 @@ class ofxBlur {
 protected:
 	ofFbo base;
 	vector<ofFbo> ping, pong;
-	
-	ofShader blurShader, combineShader;
+    
+    ofShader blurShader, combineShader;
+    ofVec2f center;
+    float radialStart, radialEnd;
 	float scale, rotation;
 	float downsample;
 	float brightness;
@@ -18,7 +20,10 @@ public:
 	
 	void setScale(float scale);
 	void setRotation(float rotation);
-	void setBrightness(float brightness); // only applies to multipass
+    void setBrightness(float brightness); // only applies to multipass
+    void setRadialStart(float radialStart);
+    void setRadialEnd(float radialEnd);
+    void setCenter(ofVec2f center);
 	
 	void begin();
 	void end();

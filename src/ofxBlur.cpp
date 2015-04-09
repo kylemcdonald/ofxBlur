@@ -51,15 +51,19 @@ string generateBlurSource(int radius, float shape) {
 	stringstream src;
     src << "#version 120\n";
 	src << "uniform sampler2DRect source;\n";
-	src << "uniform vec2 direction;\n";
+    src << "uniform vec2 direction;\n";
+    src << "uniform vec2 center;\n";
+    src << "uniform float radialStart, range;\n";
 	src << "void main(void) {\n";
 	src << "\tvec2 tc = gl_TexCoord[0].st;\n";
+    src << "\tfloat strength = max(0, length(tc - center) - radialStart) / range;\n";
+    src << "\tvec2 sd = strength * direction;\n";
 	src << "\tgl_FragColor = " << coefficients[0] << " * texture2DRect(source, tc);\n";
 	for(int i = 1; i < coefficients.size(); i++) {
 		int curOffset = i - 1;
 		src << "\tgl_FragColor += " << coefficients[i] << " * \n";
-		src << "\t\t(texture2DRect(source, tc - (direction * " << offsets[i - 1] << ")) + \n";
-		src << "\t\ttexture2DRect(source, tc + (direction * " << offsets[i - 1] << ")));\n";
+		src << "\t\t(texture2DRect(source, tc - (sd * " << offsets[i - 1] << ")) + \n";
+		src << "\t\ttexture2DRect(source, tc + (sd * " << offsets[i - 1] << ")));\n";
 	}
 	src << "}\n";
 	
@@ -95,6 +99,8 @@ string generateCombineSource(int passes, float downsample) {
 
 ofxBlur::ofxBlur()
 :scale(1)
+,radialStart(100)
+,radialEnd(400)
 ,rotation(0)
 ,brightness(1) {
 }
@@ -149,6 +155,18 @@ void ofxBlur::setBrightness(float brightness) {
 	this->brightness = brightness;
 }
 
+void ofxBlur::setRadialStart(float radialStart) {
+    this->radialStart = radialStart;
+}
+
+void ofxBlur::setRadialEnd(float radialEnd) {
+    this->radialEnd = radialEnd;
+}
+
+void ofxBlur::setCenter(ofVec2f center) {
+    this->center = center;
+}
+
 void ofxBlur::begin() {
 	base.begin();
 }
@@ -180,7 +198,10 @@ void ofxBlur::end() {
 		curPong.begin();
 		blurShader.begin();
 		blurShader.setUniformTexture("source", curPing.getTextureReference(), 0);
-		blurShader.setUniform2f("direction", xDirection.x, xDirection.y);
+        blurShader.setUniform2f("direction", xDirection);
+        blurShader.setUniform1f("range", radialEnd - radialStart);
+        blurShader.setUniform1f("radialStart", radialStart);
+        blurShader.setUniform2f("center", center);
 		curPing.draw(0, 0);
 		blurShader.end();
 		curPong.end();
@@ -188,8 +209,11 @@ void ofxBlur::end() {
 		// vertical blur pong into ping
 		curPing.begin();
 		blurShader.begin();
-		blurShader.setUniformTexture("source", curPong.getTextureReference(), 0);
-		blurShader.setUniform2f("direction", yDirection.x, yDirection.y);
+        blurShader.setUniformTexture("source", curPong.getTextureReference(), 0);
+        blurShader.setUniform2f("direction", yDirection);
+        blurShader.setUniform1f("range", radialEnd - radialStart);
+        blurShader.setUniform1f("radialStart", radialStart);
+        blurShader.setUniform2f("center", center);
 		curPong.draw(0, 0);
 		blurShader.end();
 		curPing.end();
