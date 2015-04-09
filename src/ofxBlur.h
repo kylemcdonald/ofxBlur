@@ -5,7 +5,7 @@
 class ofxBlur {
 protected:
 	ofFbo base;
-	vector<ofFbo*> ping, pong;
+	vector<ofFbo> ping, pong;
 	
 	ofShader blurShader, combineShader;
 	float scale, rotation;

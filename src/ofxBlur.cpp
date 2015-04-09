@@ -49,6 +49,7 @@ string generateBlurSource(int radius, float shape) {
 	}
 	
 	stringstream src;
+    src << "#version 120\n";
 	src << "uniform sampler2DRect source;\n";
 	src << "uniform vec2 direction;\n";
 	src << "void main(void) {\n";
@@ -71,6 +72,7 @@ string generateCombineSource(int passes, float downsample) {
 		combineNames.push_back("s" + ofToString(i));
 	}
 	stringstream src;
+    src << "#version 120\n";
 	src << "uniform sampler2DRect " << ofJoinString(combineNames, ",") << ";\n";
 	src << "uniform float brightness;\n";
 	if(downsample == 1) {
@@ -113,18 +115,23 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 		combineShader.setupShaderFromSource(GL_FRAGMENT_SHADER, combineSource);
 		combineShader.linkProgram();
 	}
-	
+    
+    base.allocate(width, height);
+    
 	ofFbo::Settings settings;
-	base.allocate(width, height);
+    settings.useDepth = false;
+    settings.useStencil = false;
+    settings.numSamples = 0;
 	ping.resize(passes);
 	pong.resize(passes);
 	for(int i = 0; i < passes; i++) {
+        ofLogVerbose() << "building ping/pong " << width << "x" << height;
 		settings.width = width;
 		settings.height = height;
-		ping[i] = new ofFbo();
-		pong[i] = new ofFbo();
-		ping[i]->allocate(settings);
-		pong[i]->allocate(settings);
+        ping[i].allocate(settings);
+        pong[i].allocate(settings);
+//        ping[i].setDefaultTextureIndex(i);
+//        pong[i].setDefaultTextureIndex(i);
 		width *= downsample;
 		height *= downsample;
 	}
@@ -155,68 +162,66 @@ void ofxBlur::end() {
 	ofVec2f xDirection = ofVec2f(scale, 0).getRotatedRad(rotation);
 	ofVec2f yDirection = ofVec2f(0, scale).getRotatedRad(rotation);
 	for(int i = 0; i < ping.size(); i++) {
-		ofFbo* curPing = ping[i];
-		ofFbo* curPong = pong[i];
+		ofFbo& curPing = ping[i];
+		ofFbo& curPong = pong[i];
 		
 		// resample previous result into ping
-		curPing->begin();
-		int w = curPing->getWidth();
-		int h = curPing->getHeight();
+		curPing.begin();
+		int w = curPing.getWidth();
+		int h = curPing.getHeight();
 		if(i > 0) {
-			ping[i - 1]->draw(0, 0, w, h);
+			ping[i - 1].draw(0, 0, w, h);
 		} else {
 			base.draw(0, 0, w, h);
 		}
-		curPing->end();
+		curPing.end();
 		
 		// horizontal blur ping into pong
-		curPong->begin();
+		curPong.begin();
 		blurShader.begin();
-		blurShader.setUniformTexture("source", curPing->getTextureReference(), 0);
+		blurShader.setUniformTexture("source", curPing.getTextureReference(), 0);
 		blurShader.setUniform2f("direction", xDirection.x, xDirection.y);
-		curPing->draw(0, 0);
+		curPing.draw(0, 0);
 		blurShader.end();
-		curPong->end();
+		curPong.end();
 		
 		// vertical blur pong into ping
-		curPing->begin();
+		curPing.begin();
 		blurShader.begin();
-		blurShader.setUniformTexture("source", curPong->getTextureReference(), 0);
+		blurShader.setUniformTexture("source", curPong.getTextureReference(), 0);
 		blurShader.setUniform2f("direction", yDirection.x, yDirection.y);
-		curPong->draw(0, 0);
+		curPong.draw(0, 0);
 		blurShader.end();
-		curPing->end();
+		curPing.end();
 	}
 	
 	// render ping back into base
 	if(ping.size() > 1) {
 		int w = base.getWidth();
 		int h = base.getHeight();
-		
-		ofMesh mesh;
-		mesh.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
-		mesh.addTexCoord(ofVec2f(0, 0));
-		mesh.addVertex(ofVec2f(0, 0));
-		mesh.addTexCoord(ofVec2f(0, h));
-		mesh.addVertex(ofVec2f(0, h));
-		mesh.addTexCoord(ofVec2f(w, h));
-		mesh.addVertex(ofVec2f(w, h));
-		mesh.addTexCoord(ofVec2f(w, 0));
-		mesh.addVertex(ofVec2f(w, 0));
+        
+        ofPlanePrimitive plane;
+        plane.set(w, h);
+        plane.mapTexCoordsFromTexture(ping[0].getTextureReference());
 		
 		base.begin();
 		combineShader.begin();
 		for(int i = 0; i < ping.size(); i++) {
 			string name = "s" + ofToString(i);
-			combineShader.setUniformTexture(name.c_str(), ping[i]->getTextureReference(), i + 1);
-		}
+            combineShader.setUniformTexture(name.c_str(),
+                                            ping[i].getTextureReference(),
+                                            1 + i);
+        }
 		combineShader.setUniform1f("brightness", brightness);
-		mesh.draw();
+        ofPushMatrix();
+        ofTranslate(w / 2, h / 2);
+        plane.draw();
+        ofPopMatrix();
 		combineShader.end();
 		base.end();
 	} else {
 		base.begin();
-		ping[0]->draw(0, 0);
+		ping[0].draw(0, 0);
 		base.end();
 	}
 	
