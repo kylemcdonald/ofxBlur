@@ -119,24 +119,27 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 	}
     
     base.allocate(width, height);
+    base.begin(); ofClear(0); base.end();   // PAT
     
-	ofFbo::Settings settings;
+    ofFbo::Settings settings;
     settings.useDepth = false;
     settings.useStencil = false;
     settings.numSamples = 0;
-	ping.resize(passes);
-	pong.resize(passes);
-	for(int i = 0; i < passes; i++) {
+    ping.resize(passes);
+    pong.resize(passes);
+    for(int i = 0; i < passes; i++) {
         ofLogVerbose() << "building ping/pong " << width << "x" << height;
-		settings.width = width;
-		settings.height = height;
+        settings.width = width;
+        settings.height = height;
         ping[i].allocate(settings);
+        ping[i].begin(); ofClear(0); ping[i].end(); // PAT
         pong[i].allocate(settings);
+        pong[i].begin(); ofClear(0); pong[i].end(); // PAT
 //        ping[i].setDefaultTextureIndex(i);
 //        pong[i].setDefaultTextureIndex(i);
-		width *= downsample;
-		height *= downsample;
-	}
+        width *= downsample;
+        height *= downsample;
+    }
 }
 
 void ofxBlur::setScale(float scale) {
@@ -236,4 +239,9 @@ ofTexture& ofxBlur::getTextureReference() {
 
 void ofxBlur::draw() {
 	base.draw(0, 0);
+}
+
+// PAT
+void ofxBlur::draw(ofRectangle _rect) {
+    base.draw(_rect);
 }

@@ -23,6 +23,7 @@ public:
 	void begin();
 	void end();
 	void draw();
+    void draw(ofRectangle _rect);
 	
 	ofTexture& getTextureReference();
 };
