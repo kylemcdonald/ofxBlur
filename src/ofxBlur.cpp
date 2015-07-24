@@ -15,11 +15,11 @@ void GaussianRow(int elements, vector<float>& row, float variance = .2) {
 
 string generateBlurSource(int radius, float shape) {
 	int rowSize = 2 * radius + 1;
-	
+
 	// generate row
 	vector<float> row;
 	GaussianRow(rowSize, row, shape);
-	
+
 	// normalize row and coefficients
 	vector<float> coefficients;
 	float sum = 0;
@@ -35,10 +35,10 @@ string generateBlurSource(int radius, float shape) {
 		float weightSum = row[i] + row[i + 1];
 		coefficients.push_back(weightSum);
 	}
-	
+
 	// generate offsets
 	vector<float> offsets;
-	for(int i = center + 1; i < row.size(); i += 2) {		
+	for(int i = center + 1; i < row.size(); i += 2) {
 		int left = i - center;
 		int right = left + 1;
 		float leftVal = row[i];
@@ -47,7 +47,7 @@ string generateBlurSource(int radius, float shape) {
 		float weightedAverage = (left * leftVal + right * rightVal) / weightSum;
 		offsets.push_back(weightedAverage);
 	}
-	
+
 	stringstream src;
     src << "#version 120\n";
 	src << "#extension GL_ARB_texture_rectangle : enable\n";
@@ -63,7 +63,7 @@ string generateBlurSource(int radius, float shape) {
 		src << "\t\ttexture2DRect(source, tc + (direction * " << offsets[i - 1] << ")));\n";
 	}
 	src << "}\n";
-	
+
 	return src.str();
 }
 
@@ -108,7 +108,7 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 	}
 	blurShader.setupShaderFromSource(GL_FRAGMENT_SHADER, blurSource);
 	blurShader.linkProgram();
-	
+
 	if(passes > 1) {
 		string combineSource = generateCombineSource(passes, downsample);
 		if(ofGetLogLevel() == OF_LOG_VERBOSE) {
@@ -117,10 +117,10 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 		combineShader.setupShaderFromSource(GL_FRAGMENT_SHADER, combineSource);
 		combineShader.linkProgram();
 	}
-    
+
     base.allocate(width, height);
-    base.begin(); ofClear(0); base.end();   // PAT
-    
+    base.begin(); ofClear(0); base.end();
+
     ofFbo::Settings settings;
     settings.useDepth = false;
     settings.useStencil = false;
@@ -132,9 +132,9 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
         settings.width = width;
         settings.height = height;
         ping[i].allocate(settings);
-        ping[i].begin(); ofClear(0); ping[i].end(); // PAT
+        ping[i].begin(); ofClear(0); ping[i].end();
         pong[i].allocate(settings);
-        pong[i].begin(); ofClear(0); pong[i].end(); // PAT
+        pong[i].begin(); ofClear(0); pong[i].end();
 //        ping[i].setDefaultTextureIndex(i);
 //        pong[i].setDefaultTextureIndex(i);
         width *= downsample;
@@ -163,13 +163,13 @@ void ofxBlur::end() {
 
 	ofPushStyle();
 	ofSetColor(255);
-			
+
 	ofVec2f xDirection = ofVec2f(scale, 0).getRotatedRad(rotation);
 	ofVec2f yDirection = ofVec2f(0, scale).getRotatedRad(rotation);
 	for(int i = 0; i < ping.size(); i++) {
 		ofFbo& curPing = ping[i];
 		ofFbo& curPong = pong[i];
-		
+
 		// resample previous result into ping
 		curPing.begin();
 		int w = curPing.getWidth();
@@ -180,7 +180,7 @@ void ofxBlur::end() {
 			base.draw(0, 0, w, h);
 		}
 		curPing.end();
-		
+
 		// horizontal blur ping into pong
 		curPong.begin();
 		blurShader.begin();
@@ -189,7 +189,7 @@ void ofxBlur::end() {
 		curPing.draw(0, 0);
 		blurShader.end();
 		curPong.end();
-		
+
 		// vertical blur pong into ping
 		curPing.begin();
 		blurShader.begin();
@@ -199,16 +199,16 @@ void ofxBlur::end() {
 		blurShader.end();
 		curPing.end();
 	}
-	
+
 	// render ping back into base
 	if(ping.size() > 1) {
 		int w = base.getWidth();
 		int h = base.getHeight();
-        
+
         ofPlanePrimitive plane;
         plane.set(w, h);
         plane.mapTexCoordsFromTexture(ping[0].getTextureReference());
-		
+
 		base.begin();
 		combineShader.begin();
 		for(int i = 0; i < ping.size(); i++) {
@@ -229,7 +229,7 @@ void ofxBlur::end() {
 		ping[0].draw(0, 0);
 		base.end();
 	}
-	
+
 	ofPopStyle();
 }
 
@@ -241,7 +241,6 @@ void ofxBlur::draw() {
 	base.draw(0, 0);
 }
 
-// PAT
-void ofxBlur::draw(ofRectangle _rect) {
-    base.draw(_rect);
+void ofxBlur::draw(ofRectangle rect) {
+    base.draw(rect);
 }
