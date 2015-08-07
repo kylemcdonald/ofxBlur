@@ -24,7 +24,7 @@ public:
 	void end();
 	void draw();
 	
-	ofTexture& getTextureReference();
+	ofTexture& getTexture();
 };
 
 // <3 kyle

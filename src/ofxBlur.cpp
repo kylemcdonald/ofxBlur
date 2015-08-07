@@ -13,6 +13,23 @@ void GaussianRow(int elements, vector<float>& row, float variance = .2) {
 	}
 }
 
+// needed for programmable renderer
+string generatePassThruVert(){
+    stringstream src;
+    
+    src <<"#version 150\n";
+    src <<"uniform mat4 modelViewProjectionMatrix;\n";
+    src <<"in vec4 position;\n";
+    src <<"in vec2 texcoord;\n";
+    src <<"out vec2 vTexCoord;\n";
+    src <<"void main() {;\n";
+    src <<"\tvTexCoord = texcoord;\n";
+    src <<"\tgl_Position = modelViewProjectionMatrix * position;\n";
+    src <<"}\n";
+    
+    return src.str();
+}
+
 string generateBlurSource(int radius, float shape) {
 	int rowSize = 2 * radius + 1;
 	
@@ -46,23 +63,45 @@ string generateBlurSource(int radius, float shape) {
 		float weightSum = leftVal + rightVal;
 		float weightedAverage = (left * leftVal + right * rightVal) / weightSum;
 		offsets.push_back(weightedAverage);
-	}
+    }
+    
+    stringstream src;
+    
+    if ( ofIsGLProgrammableRenderer() ){
+        src << "#version 150\n";
+        src << "uniform sampler2DRect source;\n";
+        src << "uniform vec2 direction;\n";
+        src << "in vec2 vTexCoord;\n";
+        
+        src << "out vec4 vFragColor;\n";
+        
+        src << "void main(void) {\n";
+        src << "\tvec2 tc = vTexCoord;\n";
+        src << "\tvFragColor = " << coefficients[0] << " * texture(source, tc);\n";
+        for(int i = 1; i < coefficients.size(); i++) {
+            int curOffset = i - 1;
+            src << "\tvFragColor += " << coefficients[i] << " * \n";
+            src << "\t\t(texture(source, tc - (direction * " << offsets[i - 1] << ")) + \n";
+            src << "\t\ttexture(source, tc + (direction * " << offsets[i - 1] << "))); \n";
+        }
+        src << "}\n";
+    } else {
+        src << "#version 120\n";
+        src << "#extension GL_ARB_texture_rectangle : enable\n";
+        src << "uniform sampler2DRect source;\n";
+        src << "uniform vec2 direction;\n";
+        src << "void main(void) {\n";
+        src << "\tvec2 tc = gl_TexCoord[0].st;\n";
+        src << "\tgl_FragColor = " << coefficients[0] << " * texture2DRect(source, tc);\n";
+        for(int i = 1; i < coefficients.size(); i++) {
+            int curOffset = i - 1;
+            src << "\tgl_FragColor += " << coefficients[i] << " * \n";
+            src << "\t\t(texture2DRect(source, tc - (direction * " << offsets[i - 1] << ")) + \n";
+            src << "\t\ttexture2DRect(source, tc + (direction * " << offsets[i - 1] << ")));\n";
+        }
+        src << "}\n";
+    }
 	
-	stringstream src;
-    src << "#version 120\n";
-	src << "#extension GL_ARB_texture_rectangle : enable\n";
-	src << "uniform sampler2DRect source;\n";
-	src << "uniform vec2 direction;\n";
-	src << "void main(void) {\n";
-	src << "\tvec2 tc = gl_TexCoord[0].st;\n";
-	src << "\tgl_FragColor = " << coefficients[0] << " * texture2DRect(source, tc);\n";
-	for(int i = 1; i < coefficients.size(); i++) {
-		int curOffset = i - 1;
-		src << "\tgl_FragColor += " << coefficients[i] << " * \n";
-		src << "\t\t(texture2DRect(source, tc - (direction * " << offsets[i - 1] << ")) + \n";
-		src << "\t\ttexture2DRect(source, tc + (direction * " << offsets[i - 1] << ")));\n";
-	}
-	src << "}\n";
 	
 	return src.str();
 }
@@ -73,25 +112,49 @@ string generateCombineSource(int passes, float downsample) {
 		combineNames.push_back("s" + ofToString(i));
 	}
 	stringstream src;
-    src << "#version 120\n";
-	src << "#extension GL_ARB_texture_rectangle : enable\n";
-	src << "uniform sampler2DRect " << ofJoinString(combineNames, ",") << ";\n";
-	src << "uniform float brightness;\n";
-	if(downsample == 1) {
-		src << "const float scaleFactor = 1.;\n";
-	} else {
-		src << "const float scaleFactor = " << downsample << ";\n";
-	}
-	src << "void main(void) {\n";
-	src << "\tvec2 tc = gl_TexCoord[0].st;\n";
-	for(int i = 0; i < passes; i++) {
-		src << "\tgl_FragColor " << (i == 0 ? "=" : "+=");
-		src << " texture2DRect(" << combineNames[i] << ", tc);";
-		src << (i + 1 != passes ? " tc *= scaleFactor;" : "");
-		src << "\n";
-	}
-	src << "\tgl_FragColor *= brightness / " << passes << ".;\n";
-	src << "}\n";
+    if ( ofIsGLProgrammableRenderer() ){
+        src << "#version 150\n";
+        src << "uniform sampler2DRect " << ofJoinString(combineNames, ",") << ";\n";
+        src << "uniform float brightness;\n";
+        if(downsample == 1) {
+            src << "const float scaleFactor = 1.;\n";
+        } else {
+            src << "const float scaleFactor = " << downsample << ";\n";
+        }
+        src << "in vec2 vTexCoord;\n";
+        src << "out vec4 vFragColor;\n";
+        
+        src << "void main(void) {\n";
+        src << "\tvec2 tc = vTexCoord;\n";
+        for(int i = 0; i < passes; i++) {
+            src << "\tvFragColor " << (i == 0 ? "=" : "+=");
+            src << " texture(" << combineNames[i] << ", tc);";
+            src << (i + 1 != passes ? " tc *= scaleFactor;" : "");
+            src << "\n";
+        }
+        src << "\tvFragColor *= brightness / " << passes << ".;\n";
+        src << "}\n";
+    } else {
+        src << "#version 120\n";
+        src << "#extension GL_ARB_texture_rectangle : enable\n";
+        src << "uniform sampler2DRect " << ofJoinString(combineNames, ",") << ";\n";
+        src << "uniform float brightness;\n";
+        if(downsample == 1) {
+            src << "const float scaleFactor = 1.;\n";
+        } else {
+            src << "const float scaleFactor = " << downsample << ";\n";
+        }
+        src << "void main(void) {\n";
+        src << "\tvec2 tc = gl_TexCoord[0].st;\n";
+        for(int i = 0; i < passes; i++) {
+            src << "\tgl_FragColor " << (i == 0 ? "=" : "+=");
+            src << " texture2DRect(" << combineNames[i] << ", tc);";
+            src << (i + 1 != passes ? " tc *= scaleFactor;" : "");
+            src << "\n";
+        }
+        src << "\tgl_FragColor *= brightness / " << passes << ".;\n";
+        src << "}\n";
+    }
 	return src.str();
 }
 
@@ -106,7 +169,18 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 	if(ofGetLogLevel() == OF_LOG_VERBOSE) {
 		cout << "ofxBlur is loading blur shader:" << endl << blurSource << endl;
 	}
+    if (ofIsGLProgrammableRenderer()){
+        string blurPassThru = generatePassThruVert();
+        if(ofGetLogLevel() == OF_LOG_VERBOSE) {
+            cout << "ofxBlur is loading blur vertex shader:" << endl << blurPassThru << endl;
+        }
+        blurShader.setupShaderFromSource(GL_VERTEX_SHADER, blurPassThru);
+    }
 	blurShader.setupShaderFromSource(GL_FRAGMENT_SHADER, blurSource);
+    
+    if (ofIsGLProgrammableRenderer()){
+        blurShader.bindDefaults();
+    }
 	blurShader.linkProgram();
 	
 	if(passes > 1) {
@@ -114,7 +188,17 @@ void ofxBlur::setup(int width, int height, int radius, float shape, int passes, 
 		if(ofGetLogLevel() == OF_LOG_VERBOSE) {
 			cout << "ofxBlur is loading combine shader:" << endl << combineSource << endl;
 		}
+        if (ofIsGLProgrammableRenderer()){
+            string blurPassThru = generatePassThruVert();
+            if(ofGetLogLevel() == OF_LOG_VERBOSE) {
+                cout << "ofxBlur is loading blur vertex shader:" << endl << blurPassThru << endl;
+            }
+            combineShader.setupShaderFromSource(GL_VERTEX_SHADER, blurPassThru);
+        }
 		combineShader.setupShaderFromSource(GL_FRAGMENT_SHADER, combineSource);
+        if (ofIsGLProgrammableRenderer()){
+            combineShader.bindDefaults();
+        }
 		combineShader.linkProgram();
 	}
     
@@ -181,7 +265,7 @@ void ofxBlur::end() {
 		// horizontal blur ping into pong
 		curPong.begin();
 		blurShader.begin();
-		blurShader.setUniformTexture("source", curPing.getTextureReference(), 0);
+		blurShader.setUniformTexture("source", curPing.getTexture(), 0);
 		blurShader.setUniform2f("direction", xDirection.x, xDirection.y);
 		curPing.draw(0, 0);
 		blurShader.end();
@@ -190,7 +274,7 @@ void ofxBlur::end() {
 		// vertical blur pong into ping
 		curPing.begin();
 		blurShader.begin();
-		blurShader.setUniformTexture("source", curPong.getTextureReference(), 0);
+		blurShader.setUniformTexture("source", curPong.getTexture(), 0);
 		blurShader.setUniform2f("direction", yDirection.x, yDirection.y);
 		curPong.draw(0, 0);
 		blurShader.end();
@@ -204,14 +288,14 @@ void ofxBlur::end() {
         
         ofPlanePrimitive plane;
         plane.set(w, h);
-        plane.mapTexCoordsFromTexture(ping[0].getTextureReference());
+        plane.mapTexCoordsFromTexture(ping[0].getTexture());
 		
 		base.begin();
 		combineShader.begin();
 		for(int i = 0; i < ping.size(); i++) {
 			string name = "s" + ofToString(i);
             combineShader.setUniformTexture(name.c_str(),
-                                            ping[i].getTextureReference(),
+                                            ping[i].getTexture(),
                                             1 + i);
         }
 		combineShader.setUniform1f("brightness", brightness);
@@ -230,8 +314,8 @@ void ofxBlur::end() {
 	ofPopStyle();
 }
 
-ofTexture& ofxBlur::getTextureReference() {
-	return base.getTextureReference();
+ofTexture& ofxBlur::getTexture() {
+	return base.getTexture();
 }
 
 void ofxBlur::draw() {
