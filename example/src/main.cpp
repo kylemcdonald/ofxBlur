@@ -1,8 +1,10 @@
 #include "ofApp.h"
-#include "ofAppGlutWindow.h"
 
 int main() {
-	ofAppGlutWindow window;
-	ofSetupOpenGL(&window, 640, 480, OF_WINDOW);
-	ofRunApp(new ofApp());
+    ofGLWindowSettings settings;
+    settings.setSize(640, 480);
+    settings.setGLVersion(3,2); // GL3
+//    settings.setGLVersion(2,1); // GL2
+    ofCreateWindow(settings);
+    ofRunApp(new ofApp());
 }

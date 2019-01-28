@@ -11,6 +11,7 @@ protected:
 	float scale, rotation;
 	float downsample;
 	float brightness;
+    
 public:
 	ofxBlur();
 

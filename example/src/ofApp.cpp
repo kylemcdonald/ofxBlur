@@ -20,7 +20,7 @@ void ofApp::setup() {
     // - downsample (not shown here, defaults to .5) corresponds to the scale
     //   factor when downsampling when passes is greater than 1
     //   this has no effect on the speed of the blur
-    blur.setup(cam.getWidth(), cam.getHeight(), 10, .2, 4);
+    blur.setup(cam.getWidth(), cam.getHeight(), 10, .2, 2);
 }
 
 void ofApp::update() {	
@@ -35,7 +35,6 @@ void ofApp::update() {
     //   this only has a visible effect if the scale is greater than 1
     blur.setScale(ofMap(mouseX, 0, ofGetWidth(), 0, 10));
     blur.setRotation(ofMap(mouseY, 0, ofGetHeight(), -PI, PI));
-    
 }
 
 void ofApp::draw() {
@@ -45,7 +44,7 @@ void ofApp::draw() {
 	ofSetColor(255);
 	cam.draw(0, 0);
 	ofSetCircleResolution(64);
-	ofCircle(mouseX, mouseY, 32);
+	ofDrawCircle(mouseX, mouseY, 32);
 	blur.end();
 	
 	blur.draw();

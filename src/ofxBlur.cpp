@@ -277,7 +277,7 @@ void ofxBlur::end() {
 		curPing.begin();
 		blurShader.begin();
 		blurShader.setUniformTexture("source", curPong.getTexture(), 0);
-		blurShader.setUniform2f("direction", yDirection.x, yDirection.y);
+        blurShader.setUniform2f("direction", yDirection.x, yDirection.y);
 		curPong.draw(0, 0);
 		blurShader.end();
 		curPing.end();
@@ -288,9 +288,6 @@ void ofxBlur::end() {
 		int w = base.getWidth();
 		int h = base.getHeight();
 
-        ofPlanePrimitive plane;
-        plane.set(w, h);
-        plane.mapTexCoordsFromTexture(ping[0].getTexture());
 		base.begin();
 		combineShader.begin();
 		for(int i = 0; i < ping.size(); i++) {
@@ -300,10 +297,7 @@ void ofxBlur::end() {
                                             1 + i);
         }
 		combineShader.setUniform1f("brightness", brightness);
-        ofPushMatrix();
-        ofTranslate(w / 2, h / 2);
-        plane.draw();
-        ofPopMatrix();
+        ping[0].draw(0, 0);
 		combineShader.end();
 		base.end();
 	} else {
